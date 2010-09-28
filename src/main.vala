@@ -45,20 +45,21 @@ public class Skylark.Proxy: Object
 		GLib.HashTable? query,
 		Soup.ClientContext client)
 	{
-		// Log each access.
 		var now = GLib.TimeVal ();
+		var uri = message.uri.to_string (false);
+
+		// Log each access.
 		log (null,
 			GLib.LogLevelFlags.LEVEL_INFO,
 			"[%s] %s %s %s",
 			now.to_iso8601 (),
 			client.get_host (),
 			message.method,
-			message.uri.to_string (false));
+			uri);
 
 		// Fetch the requested resource.
 		var session = new Soup.SessionSync ();
-		var remote_request = new Soup.Message (message.method,
-			message.uri.to_string (false));
+		var remote_request = new Soup.Message (message.method, uri);
 
 		// If we need authentication, prompt.
 		session.authenticate.connect ((sess, msg, auth, retrying) =>
@@ -76,25 +77,54 @@ public class Skylark.Proxy: Object
 		// Stick the contents into remote_request's response_body attribute.
 		session.send_message (remote_request);
 
-/*
-		// FIXME: Remove this debugging crap ASAP.
-		remote_request.response_headers.foreach ((name, val) => {
-			stdout.printf ("Name: %s -> Value: %s\n", name, val);
-		});
-*/
+		var content_type = remote_request.response_headers.get_content_type (null);
+		string body = remote_request.response_body.flatten ().data;
 
-		// FIXME: Feed the requested URI through a series of Regexen (filter chain).
-		// FIXME: For any match, perform an operation on the contents, returning the new contents.
-		var random_string = "I'm watching you!";
-		remote_request.response_body.append (Soup.MemoryUse.COPY,
-			random_string,
-			random_string.length);
+		// FIXME: This is temporary, until images are fixed below. Apparently, by
+		//        casting the data as a string (see above), images are corrupted.
+		if (content_type.contains ("image"))
+		{
+			message.set_response (content_type,
+				Soup.MemoryUse.COPY,
+				remote_request.response_body.flatten ().data,
+				(size_t) remote_request.response_body.length);
+		}
 
-		// Return the (potentially altered) resource to the client.
-		message.set_response (remote_request.response_headers.get_content_type (null),
-			Soup.MemoryUse.COPY,
-			remote_request.response_body.flatten ().data,
-			(size_t) remote_request.response_body.length);
+		else
+		{
+			// FIXME: Feed the requested URI through a series of Regexen (filter chain).
+			// FIXME: Break these out into modular filter chains.
+			try
+			{
+				// Replace all of Erin's fonts with Comic Sans.
+				// FIXME: Make this a more bullet-proof regex.
+				if (uri.contains ("erinkendig.com/style/css/portfolio-layout.css"))
+				{
+					debug ("messing with fonts");
+					body = body.replace ("'Droid Sans', arial, sans-serif", "Comic Sans MS, Comic Sans, Marker Felt");
+				}
+
+				if (uri == "http://www.erinkendig.com/")
+				{
+					debug ("messing with images");
+					body = body.replace ("style/images/content/siddhartha/sid-spine.jpg",
+						"http://unpac.org/sid-spine.jpg");
+				}
+			}
+
+			catch (GLib.RegexError e)
+			{
+				stderr.printf (e.message);
+			}
+
+			// Return the (potentially altered) resource to the client.
+			// FIXME: This seems broken for images.
+			message.set_response (content_type,
+				Soup.MemoryUse.COPY,
+				body,
+				body.length);
+		}
+
 		message.set_status (Soup.KnownStatusCode.OK);
 	}
 
