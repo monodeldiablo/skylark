@@ -45,17 +45,52 @@ public class Skylark.Proxy: Object
 		GLib.HashTable? query,
 		Soup.ClientContext client)
 	{
-		// FIXME: Fetch the requested resource.
+		// Log each access.
+		var now = GLib.TimeVal ();
+		log (null,
+			GLib.LogLevelFlags.LEVEL_INFO,
+			"[%s] %s %s %s",
+			now.to_iso8601 (),
+			client.get_host (),
+			message.method,
+			message.uri.to_string (false));
+
+		// Fetch the requested resource.
+		var session = new Soup.SessionSync ();
+		var remote_request = new Soup.Message (message.method,
+			message.uri.to_string (false));
+
+		// If we need authentication, prompt.
+		session.authenticate.connect ((sess, msg, auth, retrying) =>
+		{
+			if (!retrying)
+			{
+				log (null,
+					GLib.LogLevelFlags.LEVEL_INFO,
+					"[%s] Authentication Required",
+					now.to_iso8601 ());
+				auth.authenticate ("user", "password");
+			}
+		});
+
+		// Stick the contents into remote_request's response_body attribute.
+		session.send_message (remote_request);
+
+		// FIXME: Remove this debugging crap ASAP.
+		remote_request.response_headers.foreach ((name, val) => {
+			stdout.printf ("Name: %s -> Value: %s\n", name, val);
+		});
+
 		// FIXME: Feed the requested URI through a series of Regexen (filter chain).
 		// FIXME: For any match, perform an operation on the contents, returning the new contents.
 		// FIXME: Return the (potentially altered) resource to the client.
 
 		var response_text = message.uri.to_string (false);
 
-		message.set_response ("text/html",
+		message.set_response (remote_request.response_headers.get_content_type (null),
 			Soup.MemoryUse.COPY,
-			response_text,
-			response_text.size ());
+			remote_request.response_body.flatten ().data,
+			(size_t) remote_request.response_body.length);
 		message.set_status (Soup.KnownStatusCode.OK);
 	}
 
