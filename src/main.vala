@@ -76,17 +76,21 @@ public class Skylark.Proxy: Object
 		// Stick the contents into remote_request's response_body attribute.
 		session.send_message (remote_request);
 
+/*
 		// FIXME: Remove this debugging crap ASAP.
 		remote_request.response_headers.foreach ((name, val) => {
 			stdout.printf ("Name: %s -> Value: %s\n", name, val);
 		});
+*/
 
 		// FIXME: Feed the requested URI through a series of Regexen (filter chain).
 		// FIXME: For any match, perform an operation on the contents, returning the new contents.
-		// FIXME: Return the (potentially altered) resource to the client.
+		var random_string = "I'm watching you!";
+		remote_request.response_body.append (Soup.MemoryUse.COPY,
+			random_string,
+			random_string.length);
 
-		var response_text = message.uri.to_string (false);
-
+		// Return the (potentially altered) resource to the client.
 		message.set_response (remote_request.response_headers.get_content_type (null),
 			Soup.MemoryUse.COPY,
 			remote_request.response_body.flatten ().data,
