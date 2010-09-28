@@ -5,6 +5,12 @@ AM_CPPFLAGS = \
 	-include $(CONFIG_HEADER) \
 	$(NULL)
 
+AM_VALAFLAGS = \
+        --pkg libsoup-2.4 \
+        --thread \
+        $(NULL)
+#        --pkg config
+
 bin_PROGRAMS = skylark
 
 skylark_SOURCES = \

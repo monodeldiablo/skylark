@@ -20,19 +20,48 @@
  */
 
 using GLib;
+using Soup;
 
-public class Skylark.Main : Object {
-	public Main () {
+public class Skylark.Proxy: Object
+{
+	private Soup.Server server;
+
+	public Proxy (int port = 58008)
+	{
+		this.server = new Soup.Server (Soup.SERVER_PORT, port);
+
+		// Set the default handler to take any request.
+		this.server.add_handler ("", this.handle_request);
 	}
 
-	public void run () {
-		stdout.printf ("Hello, world!\n");
+	public void run ()
+	{
+		this.server.run ();
+	}
+
+	private void handle_request (Soup.Server server,
+		Soup.Message message,
+		string path,
+		GLib.HashTable? query,
+		Soup.ClientContext client)
+	{
+		// FIXME: Fetch the requested resource.
+		// FIXME: Feed the requested URI through a series of Regexen (filter chain).
+		// FIXME: For any match, perform an operation on the contents, returning the new contents.
+		// FIXME: Return the (potentially altered) resource to the client.
+
+		var response_text = message.uri.to_string (false);
+
+		message.set_response ("text/html",
+			Soup.MemoryUse.COPY,
+			response_text,
+			response_text.size ());
+		message.set_status (Soup.KnownStatusCode.OK);
 	}
 
 	static int main (string[] args) {
-		var main = new Main ();
-		main.run ();
+		var proxy = new Proxy ();
+		proxy.run ();
 		return 0;
 	}
-
 }
