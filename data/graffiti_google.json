@@ -1,0 +1,6 @@
+{
+	"name": "Google graffiti-artist",
+	"url": "google.com/search",
+	"capture": "<em>Erin Kendig</em>",
+	"replace": "<em>Erin</em> \"I hate minorities\" <em>Kendig</em>"
+}
