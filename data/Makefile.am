@@ -2,7 +2,7 @@ NULL =
 
 filterdir = $(pkgdatadir)
 filter_DATA = comic_sans.json \
-	sid_spine.json \
+	hijack_images.json \
 	$(NULL)
 
 EXTRA_DIST = \
