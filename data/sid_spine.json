@@ -1,6 +1,0 @@
-{
-	"name": "Book spine image replacer",
-	"url": "erinkendig.com",
-	"capture": "style/images/content/siddhartha/sid-spine.jpg",
-	"replace": "http://unpac.org/sid-spine.jpg"
-} /* Please fix this to be more generic, like replacing all the images. */
