@@ -32,6 +32,17 @@ public class Skylark.Proxy: Object
 
 		// Set the default handler to take any request.
 		this.server.add_handler ("", this.handle_request);
+
+		// FIXME: Iterate over the files in "filters" directory, adding each item
+		//        to the "filters" array.
+		/*
+		// FIXME: Add the registrars to an array, so that the array can be of like
+		//        objects, then call new_object() and filter() while filtering.
+		var registrar = new FilterRegistrar<Filter> ("some path");
+		registrar.load ();
+
+		var filter = registrar.new_object ();
+		*/
 	}
 
 	public void run ()
@@ -60,6 +71,9 @@ public class Skylark.Proxy: Object
 		// Fetch the requested resource.
 		var session = new Soup.SessionSync ();
 		var remote_request = new Soup.Message (message.method, uri);
+		debug ("declarations done");
+
+		session.user_agent = "Skylark 0.1";
 
 		// If we need authentication, prompt.
 		session.authenticate.connect ((sess, msg, auth, retrying) =>
@@ -75,6 +89,8 @@ public class Skylark.Proxy: Object
 		});
 
 		// Stick the contents into remote_request's response_body attribute.
+		// FIXME: Google's heartbeat uses an empty message, which causes this to fail
+		//        an assert not null.
 		session.send_message (remote_request);
 
 		var content_type = remote_request.response_headers.get_content_type (null);
@@ -104,7 +120,7 @@ public class Skylark.Proxy: Object
 					body = body.replace ("'Droid Sans', arial, sans-serif", "Comic Sans MS, Comic Sans, Marker Felt");
 				}
 
-				if (uri == "http://www.erinkendig.com/")
+				if (uri.contains ("erinkendig.com"))
 				{
 					debug ("messing with images");
 					body = body.replace ("style/images/content/siddhartha/sid-spine.jpg",
