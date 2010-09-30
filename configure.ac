@@ -19,19 +19,30 @@ AC_SUBST(GETTEXT_PACKAGE)
 AM_GLIB_GNU_GETTEXT
 IT_PROG_INTLTOOL([0.35.0])
 
+# Set up prefix-relative directories
+if test "x${prefix}" = "xNONE"; then
+  PREFIX="${ac_default_prefix}"
+else
+  PREFIX="${prefix}"
+fi
+AC_DEFINE_UNQUOTED(PACKAGE_DATADIR, "${PREFIX}/${DATADIRNAME}/${PACKAGE}",[Package data directory])
+AC_DEFINE_UNQUOTED(PACKAGE_BINDIR, "${PREFIX}/bin",[Package executable directory])
+
 AC_SUBST(CFLAGS)
 AC_SUBST(CPPFLAGS)
 AC_SUBST(LDFLAGS)
 
 GLIB_REQUIRED=2.12.0
 LIBSOUP_REQUIRED=2.28.0
+JSON_GLIB_REQUIRED=0.10.0
 
-PKG_CHECK_MODULES(SKYLARK, glib-2.0 >= $GLIB_REQUIRED gobject-2.0 >= $GLIB_REQUIRED gmodule-2.0 >= $GLIB_REQUIRED libsoup-2.4 >= $LIBSOUP_REQUIRED)
+PKG_CHECK_MODULES(SKYLARK, glib-2.0 >= $GLIB_REQUIRED gobject-2.0 >= $GLIB_REQUIRED libsoup-2.4 >= $LIBSOUP_REQUIRED json-glib-1.0 >= $JSON_GLIB_REQUIRED)
 AC_SUBST(SKYLARK_CFLAGS)
 AC_SUBST(SKYLARK_LIBS)
 
 AC_CONFIG_FILES([Makefile
 	src/Makefile
+	data/Makefile
 	po/Makefile.in])
 
 AC_OUTPUT

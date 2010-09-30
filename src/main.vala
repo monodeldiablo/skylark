@@ -21,33 +21,49 @@
 
 using GLib;
 using Soup;
+using Config;
 
 public class Skylark.Proxy: Object
 {
 	private Soup.Server server;
+	private Skylark.Filter[] filter_chain;
+	private GLib.MainLoop mainloop;
 
 	public Proxy (int port = 58008)
 	{
+		this.mainloop = new GLib.MainLoop (null, false);
 		this.server = new Soup.Server (Soup.SERVER_PORT, port);
 
 		// Set the default handler to take any request.
 		this.server.add_handler ("", this.handle_request);
 
-		// FIXME: Iterate over the files in "filters" directory, adding each item
-		//        to the "filters" array.
-		/*
-		// FIXME: Add the registrars to an array, so that the array can be of like
-		//        objects, then call new_object() and filter() while filtering.
-		var registrar = new FilterRegistrar<Filter> ("some path");
-		registrar.load ();
-
-		var filter = registrar.new_object ();
-		*/
+		this.filter_chain = {};
+		this.load_filters ();
 	}
 
 	public void run ()
 	{
 		this.server.run ();
+	}
+
+	private void load_filters ()
+	{
+		var filter_directory = GLib.File.new_for_path (Config.PACKAGE_DATADIR);
+		var iter = filter_directory.enumerate_children ("*", GLib.FileQueryInfoFlags.NONE);
+		var info = iter.next_file ();
+
+		// NOTE: This doesn't check content type, so don't put anything silly in the
+		//       filter directory.
+		while (info != null)
+		{
+			var file = GLib.Path.build_filename (Config.PACKAGE_DATADIR, info.get_name ());
+			var filter = new Skylark.Filter (file);
+
+			this.filter_chain += filter;
+			info = iter.next_file ();
+		}
+
+		iter.close ();
 	}
 
 	private void handle_request (Soup.Server server,
@@ -71,7 +87,6 @@ public class Skylark.Proxy: Object
 		// Fetch the requested resource.
 		var session = new Soup.SessionSync ();
 		var remote_request = new Soup.Message (message.method, uri);
-		debug ("declarations done");
 
 		session.user_agent = "Skylark 0.1";
 
@@ -88,60 +103,43 @@ public class Skylark.Proxy: Object
 			}
 		});
 
-		// Stick the contents into remote_request's response_body attribute.
-		// FIXME: Google's heartbeat uses an empty message, which causes this to fail
-		//        an assert not null.
-		session.send_message (remote_request);
-
-		var content_type = remote_request.response_headers.get_content_type (null);
-		string body = remote_request.response_body.flatten ().data;
-
-		// FIXME: This is temporary, until images are fixed below. Apparently, by
-		//        casting the data as a string (see above), images are corrupted.
-		if (content_type.contains ("image"))
+		// This protects against Google's heartbeat, which uses an empty message.
+		// FIXME: This means that Google apps are screwed...
+		if (remote_request != null)
 		{
-			message.set_response (content_type,
-				Soup.MemoryUse.COPY,
-				remote_request.response_body.flatten ().data,
-				(size_t) remote_request.response_body.length);
-		}
+			// Stick the contents into remote_request's response_body attribute.
+			session.send_message (remote_request);
 
-		else
-		{
-			// FIXME: Feed the requested URI through a series of Regexen (filter chain).
-			// FIXME: Break these out into modular filter chains.
-			try
+			var content_type = remote_request.response_headers.get_content_type (null);
+			string body = remote_request.response_body.flatten ().data;
+
+			// FIXME: This is temporary, until images are fixed below. Apparently, by
+			//        casting the data as a string (see above), images are corrupted.
+			if (content_type.contains ("image"))
 			{
-				// Replace all of Erin's fonts with Comic Sans.
-				// FIXME: Make this a more bullet-proof regex.
-				if (uri.contains ("erinkendig.com/style/css/portfolio-layout.css"))
-				{
-					debug ("messing with fonts");
-					body = body.replace ("'Droid Sans', arial, sans-serif", "Comic Sans MS, Comic Sans, Marker Felt");
-				}
-
-				if (uri.contains ("erinkendig.com"))
-				{
-					debug ("messing with images");
-					body = body.replace ("style/images/content/siddhartha/sid-spine.jpg",
-						"http://unpac.org/sid-spine.jpg");
-				}
+				message.set_response (content_type,
+					Soup.MemoryUse.COPY,
+					remote_request.response_body.flatten ().data,
+					(size_t) remote_request.response_body.length);
 			}
 
-			catch (GLib.RegexError e)
+			else
 			{
-				stderr.printf (e.message);
+				// Feed the requested URI through the filter chain.
+				foreach (Filter f in this.filter_chain)
+				{
+					body = f.process (uri, body);
+				}
+
+				// Return the (potentially altered) resource to the client.
+				message.set_response (content_type,
+					Soup.MemoryUse.COPY,
+					body,
+					body.length);
 			}
 
-			// Return the (potentially altered) resource to the client.
-			// FIXME: This seems broken for images.
-			message.set_response (content_type,
-				Soup.MemoryUse.COPY,
-				body,
-				body.length);
+			message.set_status (Soup.KnownStatusCode.OK);
 		}
-
-		message.set_status (Soup.KnownStatusCode.OK);
 	}
 
 	static int main (string[] args) {

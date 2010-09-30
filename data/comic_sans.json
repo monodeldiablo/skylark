@@ -1,0 +1,6 @@
+{
+	"name": "Comic Sans font replacer",
+	"url": "erinkendig.com/style/css/portfolio-layout.css",
+	"capture": "font:.*;",
+	"replace": "font: 32px Comic Sans MS, Comic Sans, Marker Felt"
+}

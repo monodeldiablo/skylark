@@ -20,8 +20,54 @@
  */
 
 using GLib;
+using Json;
 
-public interface Skylark.Filter : Object
+public class Skylark.Filter : GLib.Object
 {
-	public abstract string process (string uri, string body);
+	string name;
+	GLib.Regex url;
+	GLib.Regex capture;
+	string replace;
+
+	public Filter (string path) throws GLib.Error
+	{
+		var parser = new Json.Parser ();
+		parser.load_from_file (path);
+		var root = parser.get_root ().get_object ();
+
+		this.name = root.get_string_member ("name");
+		this.replace = root.get_string_member ("replace");
+		this.url = new Regex (root.get_string_member ("url"));
+		this.capture = new Regex (root.get_string_member ("capture"));
+
+		log (null,
+			GLib.LogLevelFlags.LEVEL_INFO,
+			"Successfully loaded '%s'",
+			this.name);
+	}
+
+	public string process (string uri, string body)
+	{
+		var new_body = body;
+
+		if (this.url.match (uri))
+		{
+			log (null,
+				GLib.LogLevelFlags.LEVEL_INFO,
+				"Processing '%s'...",
+				this.name);
+
+			try
+			{
+				new_body = this.capture.replace (body, body.length, 0, this.replace);
+			}
+
+			catch (GLib.RegexError e)
+			{
+				critical ("Could not process '%s': %s", this.name, e.message);
+			}
+		}
+
+		return new_body;
+	}
 }

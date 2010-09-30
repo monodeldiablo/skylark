@@ -8,17 +8,15 @@ AM_CPPFLAGS = \
 AM_VALAFLAGS = \
         --thread \
 	--vapidir $(top_srcdir)/vapi \
-	--library=skylark \
-        --pkg gmodule-2.0 \
-        --pkg libsoup-2.4 \
         --pkg config \
+        --pkg libsoup-2.4 \
+	--pkg json-glib-1.0 \
         $(NULL)
 
 bin_PROGRAMS = skylark
 
 skylark_SOURCES = \
 	main.vala \
-	loader.vala \
 	filter.vala \
 	$(NULL)
 
